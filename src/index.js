@@ -1,0 +1,19 @@
+const sum =[0, 1, 2, 3].reduce( (prev, curr) => prev + curr );
+console.log(sum);
+
+const todos = (state = [], action) => {
+    switch (action.type) {
+        case 'ADD_TODO':
+            return [
+                ...state,
+                {
+                    id: action.id,
+                    text: action.text,
+                    completed: false
+                }
+            ];
+        default:
+            return state;
+    }
+}
+
