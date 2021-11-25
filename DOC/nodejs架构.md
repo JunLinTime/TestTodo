@@ -218,6 +218,45 @@ global->Set(String::New("Person"), person_template);
 ```
 定义原型模板
 ```c++
-Handle<ObjectTemplate> person_proto = person_template->
+Handle<ObjectTemplate> person_proto = person_template->PrototypeTemplate();
+
+person_proto->Set("getAge", FunctionTemplate::New(PersonGetAge))
+person_proto->Set("setAge", FunctionTemplate::New(PersonSetAge)); 
+
+person_proto->Set("getName", FunctionTemplate::New(PersonGetName)); 
+person_proto->Set("setName", FunctionTemplate::New(PersonSetName));
 ```
+
+最后设置实例模板：
+```c++
+Handle<ObjectTemplate> person_inst = person_template->InstanceTemplate(); 
+person_inst->SetInternalFieldCount(1);
+```
+
+**C++调用JS函数**
+
+我们直接看下 src/timer_wrap.cc 的例子，V8 编译执行了 timer.js 构造了 Timer 对象
+
+```c++
+static void OnTimeout(uv_timer_t* handle) {
+    TimerWrap* wrap = static_cast<TimerWrap*>(handle->data);
+    Environment* env = wrap->env();
+    HandleScope handle_scope(env->isolate());
+    Context::Scope context_scope(env->context())
+    wrap->MakeCallback(kOnTimeout, 0, nullptr) 
+}
+
+inline v8::Local<v8::Value> AsyncWrap::MakeCallback(uint32_t index, int argc, v8::Local<v8::Value>* argv) {
+    v8::Local<v8::Value> cb_v = object()->Get(index);
+    CHECK(cb_v->IsFunction());
+    return MakeCallback(cb_v.As<v8::Function>(), argc, argv);
+}
+```
+TimerWrap 对象通过数组的索引寻址，找到 Timer 对象索引 0 的对象，而对其赋值的是在 lib/timer.js 里面的 list._timer[kOnTimeout] = listOnTimeout;
+这边找到的对象是个 Function, 后面忽略 domains 异常处理等，就是简单的调用 Function 对象的 Call 方法, 并且传入上文提到的 Context 和参数。
+
+```c++
+Local<Value> ret = callback0->Call(recv, argc, argv)
+```
+这就实现了 C++ 对 JS函数的调用
 
